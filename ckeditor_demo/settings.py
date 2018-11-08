@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import os
 import tempfile
 
@@ -73,8 +71,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'ckeditor',
-    'ckeditor_uploader',
-    'ckeditor_demo.demo_application',
+    'ckeditor_demo.demo',
 )
 
 _MIDDLEWARE = (

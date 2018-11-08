@@ -4,35 +4,13 @@ from django import forms
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.serializers.json import DjangoJSONEncoder
+from django.forms.utils import flatatt
+from django.forms.widgets import get_default_renderer
 from django.utils.encoding import force_text
 from django.utils.functional import Promise
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
-from django.utils.translation import get_language
-
 from js_asset import JS, static
-
-try:
-    # Django >=1.11
-    from django.forms.widgets import get_default_renderer
-except ImportError:
-    # Django <1.11
-    from django.template.loader import render_to_string
-
-    def get_default_renderer():
-        class DummyDjangoRenderer(object):
-            @staticmethod
-            def render(*args, **kwargs):
-                return render_to_string(*args, **kwargs)
-
-        return DummyDjangoRenderer
-
-try:
-    # Django >=1.7
-    from django.forms.utils import flatatt
-except ImportError:
-    # Django <1.7
-    from django.forms.util import flatatt
 
 
 class LazyEncoder(DjangoJSONEncoder):
@@ -46,22 +24,8 @@ class LazyEncoder(DjangoJSONEncoder):
 json_encode = LazyEncoder().encode
 
 DEFAULT_CONFIG = {
-    'skin': 'moono-lisa',
-    'toolbar_Basic': [
-        ['Source', '-', 'Bold', 'Italic']
-    ],
-    'toolbar_Full': [
-        ['Styles', 'Format', 'Bold', 'Italic', 'Underline', 'Strike', 'SpellChecker', 'Undo', 'Redo'],
-        ['Link', 'Unlink', 'Anchor'],
-        ['Image', 'Flash', 'Table', 'HorizontalRule'],
-        ['TextColor', 'BGColor'],
-        ['Smiley', 'SpecialChar'], ['Source'],
-    ],
-    'toolbar': 'Full',
-    'height': 291,
-    'width': 835,
-    'filebrowserWindowWidth': 940,
-    'filebrowserWindowHeight': 725,
+    'height': 200,
+    'width': 1000
 }
 
 
@@ -82,9 +46,10 @@ class CKEditorWidget(forms.Textarea):
                 ),
             }),
             'ckeditor/ckeditor/ckeditor.js',
+            'ckeditor/ckeditor/translations/ru.js'
         )
 
-    def __init__(self, config_name='default', extra_plugins=None, external_plugin_resources=None, *args, **kwargs):
+    def __init__(self, config_name='default', *args, **kwargs):
         super(CKEditorWidget, self).__init__(*args, **kwargs)
         # Setup config from defaults.
         self.config = DEFAULT_CONFIG.copy()
@@ -111,29 +76,18 @@ class CKEditorWidget(forms.Textarea):
                 raise ImproperlyConfigured('CKEDITOR_CONFIGS setting must be a\
                         dictionary type.')
 
-        extra_plugins = extra_plugins or []
-
-        if extra_plugins:
-            self.config['extraPlugins'] = ','.join(extra_plugins)
-
-        self.external_plugin_resources = external_plugin_resources or []
-
     def render(self, name, value, attrs=None, renderer=None):
         if renderer is None:
             renderer = get_default_renderer()
         if value is None:
             value = ''
         final_attrs = self.build_attrs(self.attrs, attrs, name=name)
-        self._set_config()
-        external_plugin_resources = [[force_text(a), force_text(b), force_text(c)]
-                                     for a, b, c in self.external_plugin_resources]
 
         return mark_safe(renderer.render('ckeditor/widget.html', {
             'final_attrs': flatatt(final_attrs),
             'value': conditional_escape(force_text(value)),
             'id': final_attrs['id'],
             'config': json_encode(self.config),
-            'external_plugin_resources': json_encode(external_plugin_resources)
         }))
 
     def build_attrs(self, base_attrs, extra_attrs=None, **kwargs):
@@ -145,11 +99,3 @@ class CKEditorWidget(forms.Textarea):
         if extra_attrs:
             attrs.update(extra_attrs)
         return attrs
-
-    def _set_config(self):
-        lang = get_language()
-        if lang == 'zh-hans':
-            lang = 'zh-cn'
-        elif lang == 'zh-hant':
-            lang = 'zh'
-        self.config['language'] = lang
